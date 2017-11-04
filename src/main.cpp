@@ -26,7 +26,11 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 	if (initFile.is_open()) {
 		std::cout << "Found \"init.txt\" Press enter to load parameters from file.";		
 		std::getchar();
+#if defined(_WIN32)
 		system("cls");
+#elif defined(__linux__)
+		system("clear");
+#endif
 
 		initFile >> sComPort;
 		initFile >> sNCh;
