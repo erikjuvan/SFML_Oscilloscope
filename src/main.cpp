@@ -1,5 +1,3 @@
-#include <Windows.h>
-
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -10,12 +8,15 @@
 #include <chrono>
 #include <complex>
 
-#include <SerialLibrary.h>
-
-#include <fftw3.h>
-
 #include "FFT.h"
 #include "MCU.h"
+
+#if defined(_WIN32)
+#include <Windows.h>
+#elif defined(__linux__) 
+#include<stdio.h>
+#include<stdlib.h>
+#endif
 
 
 void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBufSize) {
@@ -59,32 +60,61 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 	}
 }
 
-int main() {			
-	HANDLE hStdout;
-	CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
-	CONSOLE_CURSOR_INFO     cursorInfo;
+class Console {
+#if defined(_WIN32)
+	static HANDLE hStdout;
+	static CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+	static CONSOLE_CURSOR_INFO cursorInfo;
+#endif
 
-	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hStdout == INVALID_HANDLE_VALUE) {
-		MessageBox(NULL, TEXT("GetStdHandle"), TEXT("Console Error"), MB_OK);
-		return 1;
+public:
+
+	static bool InitConsole() {
+#if defined(_WIN32)
+		hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+		if (hStdout == INVALID_HANDLE_VALUE) {
+			std::cout << "Error: GetStdHandle\n";
+			return false;
+		}
+		if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
+		{
+			std::cout << "Error: GetConsoleScreenBufferInfo\n";
+			return false;
+		}
+
+		GetConsoleCursorInfo(hStdout, &cursorInfo);
+		cursorInfo.bVisible = false;
+		SetConsoleCursorInfo(hStdout, &cursorInfo);
+#endif
+		return true;
 	}
-	if (!GetConsoleScreenBufferInfo(hStdout, &csbiInfo))
-	{
-		MessageBox(NULL, TEXT("GetConsoleScreenBufferInfo"),
-			TEXT("Console Error"), MB_OK);
-		return -1;
-	}	
 
+	static void GotoXY(int x, int y) {
+#if defined(_WIN32)
+		csbiInfo.dwCursorPosition.X = x;
+		csbiInfo.dwCursorPosition.Y = y;
+		SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+#elif defined(__linux__)
+		printf("%c[%d;%df", 0x1B, y, x);
+#endif
+	}
+};
+
+#if defined(_WIN32)
+HANDLE Console::hStdout;
+CONSOLE_SCREEN_BUFFER_INFO Console::csbiInfo;
+CONSOLE_CURSOR_INFO	Console::cursorInfo;
+#elif defined(__linux__)
+
+#endif
+
+int main() {			
+	
 	std::string sComPort;
 	int nCh, usPerSample, chBufSize;
 	InitParameters(sComPort, nCh, usPerSample, chBufSize);
-
-	GetConsoleCursorInfo(hStdout, &cursorInfo);
-	cursorInfo.bVisible = false;
-	SetConsoleCursorInfo(hStdout, &cursorInfo);
-	csbiInfo.dwCursorPosition.X = 0;
-	csbiInfo.dwCursorPosition.Y = 5;
+	
+	Console::InitConsole();
 
 	uint8_t* buffer = nullptr;
 	buffer = new uint8_t[chBufSize * nCh];
@@ -93,10 +123,22 @@ int main() {
 	}
 
 	FFT fft(nCh, chBufSize, usPerSample);
-	MCU mcu;
-	if (mcu.Init(sComPort, nCh, chBufSize, usPerSample) == false) {
-		return -1;
+	MCU *mcu;
+	try {
+		mcu = new MCU(sComPort, nCh, chBufSize, usPerSample);
 	}	
+	catch (const serial::IOException& e) {
+		std::cerr << e.what() << std::endl;
+		return -1;
+	}
+	catch (const std::bad_alloc& e) {
+		std::cerr << e.what() << std::endl;
+		return -1;
+	}
+
+	if (!mcu->IsSerialOpen()) {
+		return -1;
+	}
 
 	const int MaxNumOfChannels = 10;
 	double freq[MaxNumOfChannels] = { 0 };
@@ -104,8 +146,8 @@ int main() {
 	int cycles[MaxNumOfChannels] = { 0 };
 	
 	while (true) {
-		if (mcu.ReadChunk((uint8_t*)buffer) > 0) {
-			SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
+		if (mcu->ReadChunk((uint8_t*)buffer) > 0) {
+			Console::GotoXY(0, 5);
 			fft.Compute(buffer, freq, ampl, cycles);
 
 			for (int i = 0; i < nCh; i++) {
@@ -116,6 +158,9 @@ int main() {
 
 	if (buffer != nullptr) {
 		delete[] buffer;
+	}
+	if (mcu != nullptr) {
+		delete mcu;
 	}
 
 	return 0;
