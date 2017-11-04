@@ -26,5 +26,12 @@ link_directories(${FFTW3_LIB_DIR})
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
+if (WIN32)
 target_link_libraries(${PROJECT_NAME} debug serial-d.lib optimized serial.lib
-	debug libfftw3-3-d.lib optimized libfftw3-3.lib)
+	debug libfftw3-3.lib optimized libfftw3-3.lib)
+endif ()
+
+if (UNIX AND NOT APPLE)
+target_link_libraries(${PROJECT_NAME} debug serial-d optimized serial
+	debug fftw3 optimized fftw3)
+endif ()
