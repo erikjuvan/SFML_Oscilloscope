@@ -99,7 +99,7 @@ public:
 		csbiInfo.dwCursorPosition.Y = y;
 		SetConsoleCursorPosition(hStdout, csbiInfo.dwCursorPosition);
 #elif defined(__linux__)
-		printf("%c[%d;%df", 0x1B, y, x);
+		printf("%c[%d;%df", 0x1B, y + 1, x);
 #endif
 	}
 };
