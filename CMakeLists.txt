@@ -11,15 +11,15 @@ file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/*.h")
 
 # External library include directories
-set(SERIAL_LIBRARY_INCLUDE_DIR "" CACHE STRING "Path to SerialLibrary include directory")
-include_directories(${SERIAL_LIBRARY_INCLUDE_DIR})
+set(SERIAL_INCLUDE_DIR "" CACHE STRING "Path to serial include directory")
+include_directories(${SERIAL_INCLUDE_DIR})
 
 set(FFTW3_INCLUDE_DIR "" CACHE STRING "Path to FFTW3 include directory")
 include_directories(${FFTW3_INCLUDE_DIR})
 
 # External library lib directories
-set(SERIAL_LIBRARY_LIB_DIR "" CACHE STRING "Path to SerialLibrary lib directory")
-link_directories(${SERIAL_LIBRARY_LIB_DIR})
+set(SERIAL_LIB_DIR "" CACHE STRING "Path to serial lib directory")
+link_directories(${SERIAL_LIB_DIR})
 
 set(FFTW3_LIB_DIR "" CACHE STRING "Path to FFTW3 lib directory")
 link_directories(${FFTW3_LIB_DIR})
