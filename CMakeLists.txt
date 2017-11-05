@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(ACM_PC)
+project(SFML_Oscilloscope)
 
 include_directories(include)
 
@@ -11,6 +11,9 @@ file(GLOB SOURCES "src/*.cpp")
 file(GLOB HEADERS "include/*.h")
 
 # External library include directories
+set(SFML_INCLUDE_DIR "" CACHE STRING "Path to SFML include directory")
+include_directories(${SFML_INCLUDE_DIR})
+
 set(SERIAL_INCLUDE_DIR "" CACHE STRING "Path to serial include directory")
 include_directories(${SERIAL_INCLUDE_DIR})
 
@@ -18,6 +21,9 @@ set(FFTW3_INCLUDE_DIR "" CACHE STRING "Path to FFTW3 include directory")
 include_directories(${FFTW3_INCLUDE_DIR})
 
 # External library lib directories
+set(SFML_LIB_DIR "" CACHE STRING "Path to SFML lib directory")
+link_directories(${SFML_LIB_DIR})
+
 set(SERIAL_LIB_DIR "" CACHE STRING "Path to serial lib directory")
 link_directories(${SERIAL_LIB_DIR})
 
@@ -28,10 +34,16 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
 
 if (WIN32)
 target_link_libraries(${PROJECT_NAME} debug serial-d.lib optimized serial.lib
-	debug libfftw3-3.lib optimized libfftw3-3.lib)
+	debug libfftw3-3.lib optimized libfftw3-3.lib
+	debug sfml-window-d.lib optimized sfml-window.lib
+	debug sfml-graphics-d.lib optimized sfml-graphics.lib
+	debug sfml-system-d.lib optimized sfml-system.lib)
 endif ()
-
+	
 if (UNIX AND NOT APPLE)
 target_link_libraries(${PROJECT_NAME} debug serial-d optimized serial
-	debug fftw3 optimized fftw3)
+	debug fftw3 optimized fftw3
+	debug sfml-window-d optimized sfml-window
+	debug sfml-graphics-d optimized sfml-graphics
+	debug sfml-system-d optimized sfml-system)
 endif ()
