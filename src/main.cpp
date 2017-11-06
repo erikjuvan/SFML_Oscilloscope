@@ -19,11 +19,6 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 	if (initFile.is_open()) {
 		std::cout << "Found \"init.txt\" Press enter to load parameters from file.";		
 		std::getchar();
-#if defined(_WIN32)
-		system("cls");
-#elif defined(__linux__)
-		system("clear");
-#endif
 
 		initFile >> sComPort;
 		initFile >> sNCh;
@@ -39,7 +34,7 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 		std::cout << sNCh << std::endl;
 		std::cout << "Us per sample: ";
 		std::cout << sUsPerSample << std::endl;
-		std::cout << "Single channel buffer size (power of 2, e.g. 1024): ";
+		std::cout << "Single channel buffer size: ";
 		std::cout << sChBufSize << std::endl;
 	}
 	else {
@@ -51,7 +46,7 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 		std::cout << "Us per sample: ";
 		std::cin >> sUsPerSample;
 		usPerSample = std::stoi(sUsPerSample);
-		std::cout << "Single channel buffer size (power of 2, e.g. 1024): ";
+		std::cout << "Single channel buffer size: ";
 		std::cin >> sChBufSize;
 		chBufSize = std::stoi(sChBufSize);
 	}
