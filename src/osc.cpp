@@ -4,8 +4,83 @@
 #include <vector>
 #include <cmath>
 #include <complex>
+#include <algorithm>
+#include <thread>
+#include <mutex>
 
 #include <SFML/Graphics.hpp>
+
+std::mutex gBufMutex;
+
+class FFT {
+	double *data_;
+	uint8_t *dataSrc_;
+	std::thread thread_;
+	int size_;
+	int* readData_;
+	int fftReadDataLimit;
+
+	void MainThread() {
+		if (*readData_ > fftReadDataLimit) {
+			std::lock_guard<std::mutex> lock(gBufMutex);
+			std::copy(dataSrc_, dataSrc_ + size_, data_);
+			lock.~lock_guard();
+
+			// Compute FFT and display results
+		}
+
+	}
+
+public:
+	FFT(int size, uint8_t* dataSrc, int* readData) : size_(size), dataSrc_(dataSrc), readData_(readData), thread_(&MainThread) {
+		data_ = new double[size_];
+	}
+
+	~FFT() {
+		thread_.join();
+		delete[] data_;
+	}
+};
+
+class Serial {
+	uint8_t *data_;
+	int size_;
+	int readData_;
+
+public:
+	Serial(int size) : size_(size) {
+		data_ = new uint8_t[size];
+	}
+	~Serial() {
+		delete[] data_;
+	}
+
+	void read() {
+		std::lock_guard<std::mutex> lock(gBufMutex);
+		if (readSerial(data_, size_)) {
+			readData_ += size_;
+		}
+		lock.~lock_guard();
+	}
+
+	uint8_t* GetBuffer() {
+		return data_;
+	}
+	int* GetReadData() {
+		return &readData_;
+	}
+};
+
+int main() {
+	Serial serial(16);
+	FFT fft(1000, serial.GetBuffer(), serial.GetReadData());
+
+	while (true) {
+		serial.read();
+	}
+
+	return 0;
+}
 
 void Osc() {
 
