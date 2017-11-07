@@ -66,13 +66,13 @@ public:
 
 	~FFT() { }
 
-	void Compute(const uint8_t* buf, double* freq, double* ampl, int* num_cycles) {
+	int Compute(const uint8_t* bufIn) {
 
 		for (int ci = 0; ci < numOfChannels_; ++ci) {
 
 			// Setup data
 			for (int i = 0; i < chBufSize_; ++i) {
-				fftChannels_[ci].dataIn[i] = static_cast<double>(*(buf + i * numOfChannels_ + ci));
+				fftChannels_[ci].dataIn[i] = static_cast<double>(*(bufIn + i * numOfChannels_ + ci));
 			}
 
 			// Run FFT
@@ -86,14 +86,10 @@ public:
 			// Optimize
 			int fftSize = chBufSize_;
 			double maxRealVal = std::abs(*maxVal);
-			Optimize(fftChannels_[ci], maxRealVal, idx, fftSize);
+			//Optimize(fftChannels_[ci], maxRealVal, idx, fftSize);
 
 			// Return values
-			freq[ci] = idx / ((double)fftSize * (1e-6 * double(usPerSample_)));
-			ampl[ci] = maxRealVal * 2.0 / fftSize;
-			if (num_cycles != nullptr) {
-				num_cycles[ci] = static_cast<int>(idx);
-			}
+			return static_cast<int>(idx);
 		}
 	}
 };

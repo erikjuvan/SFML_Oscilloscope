@@ -59,8 +59,7 @@ int main() {
 	int nCh, usPerSample, chBufSize;
 	InitParameters(sComPort, nCh, usPerSample, chBufSize);
 
-	uint8_t* buffer = nullptr;
-	buffer = new uint8_t[chBufSize * nCh];
+	uint8_t* buffer = new uint8_t[chBufSize * nCh];
 	if (buffer == nullptr) {
 		std::cout << "Couldn't allocate memory. Request of " << chBufSize * nCh << " bytes is too big" << std::endl;
 	}
@@ -83,15 +82,11 @@ int main() {
 		return -1;
 	}
 
-	const int MaxNumOfChannels = 10;
-	double freq[MaxNumOfChannels] = { 0 };
-	double ampl[MaxNumOfChannels] = { 0 };
-	int cycles[MaxNumOfChannels] = { 0 };
-	
+	Oscilloscope osc(1020, 800, "Oscilloscope", nCh);	// w, h, name, nch, uspersample
+
 	while (true) {
-		if (mcu->ReadChunk((uint8_t*)buffer) > 0) {			
-			fft.Compute(buffer, freq, ampl, cycles);
-		}		
+		if (mcu->ReadChunk(buffer))
+			osc.Run(buffer);
 	}
 
 	if (buffer != nullptr) {
