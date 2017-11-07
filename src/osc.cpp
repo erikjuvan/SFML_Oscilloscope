@@ -71,6 +71,20 @@ public:
 	}
 };
 
+class MCU {
+	Serial serial_;
+
+public:
+	
+	MCU(int dataSize) : serial_(dataSize) {
+
+	}
+
+	~MCU() {
+
+	}
+};
+
 int main() {
 	Serial serial(16);
 	FFT fft(1000, serial.GetBuffer(), serial.GetReadData());
