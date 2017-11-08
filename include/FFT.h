@@ -2,11 +2,12 @@
 
 #include <vector>
 #include <complex>
-#include <fftw3.h>
 #include <iostream>
 #include <algorithm>
 #include <iomanip>
 #include <chrono>
+
+#include <fftw3.h>
 
 class FFT {
 private:
@@ -66,30 +67,25 @@ public:
 
 	~FFT() { }
 
-	int Compute(const uint8_t* bufIn) {
+	void Run(const std::vector<std::vector<double>>& dataIn, std::vector<std::vector<double>>& dataOut) {
 
 		for (int ci = 0; ci < numOfChannels_; ++ci) {
 
 			// Setup data
 			for (int i = 0; i < chBufSize_; ++i) {
-				fftChannels_[ci].dataIn[i] = static_cast<double>(*(bufIn + i * numOfChannels_ + ci));
+				fftChannels_[ci].dataIn[i] = dataIn[ci][i];
 			}
 
 			// Run FFT
 			fftw_execute(fftChannels_[ci].fftPlan);
 
-			// Find max element
-			std::complex<double>* maxVal = std::max_element(fftChannels_[ci].dataOut + 1, fftChannels_[ci].dataOut + chBufSize_ / 2,	// discard 0 index (DC offset) and search only the first half
-				[](std::complex<double> const & lhs, std::complex<double> const & rhs) { return std::abs(lhs) < std::abs(rhs); });
-			double idx = std::distance(fftChannels_[ci].dataOut, maxVal);
-
-			// Optimize
-			int fftSize = chBufSize_;
-			double maxRealVal = std::abs(*maxVal);
-			//Optimize(fftChannels_[ci], maxRealVal, idx, fftSize);
-
-			// Return values
-			return static_cast<int>(idx);
+			// Copy to output buffer
+			//freq[ci] = idx / ((double)fftSize * (1e-6 * double(usPerSample_)));
+			int size = dataOut[0].size();
+			dataOut[ci][0] = std::abs(fftChannels_[ci].dataOut[0]) / chBufSize_; // offset doesn't multiply by * 2
+			for (int i = 1; i < size; ++i) {
+				dataOut[ci][i] = std::abs(fftChannels_[ci].dataOut[i]) * 4 / chBufSize_;
+			}
 		}
 	}
 };

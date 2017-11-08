@@ -9,145 +9,126 @@
 
 #include <SFML/Graphics.hpp>
 
-class Oscilloscope {
+class Display {
 
-	class Display {
+	sf::RenderWindow& window_;
+	int x_, y_, w_, h_;
+	sf::VertexArray axis_;
 
-		class Drawable {
-		protected:
-			sf::RenderWindow& window_;
-		public:
-			Drawable(sf::RenderWindow& window) : window_(window) {}
-			virtual void Draw() const = 0;
-		};
+	int nCh_;
+	int nPoints_;
+	int idxPoints_;
+	std::vector<sf::VertexArray> points_;
 
-		class Canvas : public Drawable {
-		public:
-			int x_, y_;
-			int width_, height_;
-			sf::VertexArray axes_;
-
-			Canvas(sf::RenderWindow& window, const sf::Color& axisColor) : Drawable(window), x_(0), y_(0), width_(0), height_(0), axes_(sf::PrimitiveType::LinesStrip, 3) {
-				axes_[0].color = axes_[1].color = axes_[2].color = axisColor;
-			}
-
-			void SetDimensions(int x, int y, int width, int height) {
-				x_ = x; y_ = y; width_ = width; height_ = height;
-				axes_[0].position = sf::Vector2f(x, y + height);
-				axes_[1].position = sf::Vector2f(x, y);
-				axes_[2].position = sf::Vector2f(x + width, y);
-			}
-
-			void Draw() const {
-				window_.draw(axes_);
-			}
-		};
-
-		class Data : public Drawable {
-
-			struct Channel {
-				sf::VertexArray buffer_;
-
-				Channel(int size) : buffer_(sf::PrimitiveType::LinesStrip, size) {}
-			};
-
-			int nChannels_;
-			int channelSize_;
-			std::vector<Channel> channel_;
-			int elementi;
-
-		public:
-			Data(sf::RenderWindow& window, int nChannels, int channelSize) : Drawable(window), elementi(0), nChannels_(nChannels), channelSize_(channelSize) {
-				for (int i = 0; i < nChannels; i++)
-					channel_.emplace_back(channelSize);
-			}
-
-			void Draw() const {
-				for (auto& c : channel_) {
-					window_.draw(c.buffer_);
-				}
-			}
-
-			int IdxToX(const int idx, const int width, const int MaxIdx) const {
-				return std::round((double)idx * ((double)width / (double)MaxIdx));
-			}
-
-			void AdaptTo(const Canvas& cv, int chi, int first, int last, int* data) {
-				if (first < last && last < channelSize_) {
-					for (int i = 0; first < last; first++, i++) {
-						channel_[chi].buffer_[first].position = sf::Vector2f(IdxToX(first, cv.width_, channelSize_), cv.height_ - data[i] * ((double)cv.height_ / 255.0));
-					}
-				}
-			}
-
-			void Run(const uint8_t* buffer, int chBufSize, const Canvas& cv) {
-
-				for (int ci = 0; ci < nChannels_; ++ci) {
-					// Setup data
-					for (int i = 0; i < chBufSize; ++i) {
-						channel_[ci].buffer_[i].position.x = IdxToX(first, cv.width_, channelSize_);
-						channel_[ci].buffer_[i].position.y = cv.height_ - static_cast<double>(*(buffer + i * nChannels_ + ci)) * ((double)cv.height_ / 255.0);
-					}
-				}
-			}
-			
-		};
-
-		Canvas	canvas_;
-		Data	data_;
-		int		nChannels_;
-
-	public:
-
-		Display(sf::RenderWindow& window, int oscWidth, int oscHeight, int nChannels) : nChannels_(nChannels),
-			canvas_(window, sf::Color::White),
-			data_(window, nChannels) {
-
-		}
-
-		void Run(const uint8_t* buffer, int chBufSize) {
-
-			data_.Run(buffer, chBufSize, canvas_);
-
-		}
-
-		void Draw() {
-			canvas_.Draw();
-			data_.Draw();
-		}
-
-	};
-
-	sf::RenderWindow window_;
-	Display time_;
-	Display freq_;
+	const uint32_t colors_[10] {0xFF0000FF, 0x00FF00FF, 0x0000FFFF, 0xFFFF00FF, 0x00FFFFFF, 0xFF00FFFF, 0xFF8000FF, 0xC0C0C0FF, 0x800000FF, 0x808000FF};
 
 public:
 
-	Oscilloscope(int width, int height, std::string name, int nCh) :
-		window_(sf::VideoMode(width, height), name),
-		time_(window_, width, height, nCh),
-		freq_(window_, width, height, nCh) {
+	Display(sf::RenderWindow& window, int x, int y, int w, int h, int nCh, int nPoints) :
+		window_(window), x_(x), y_(y), w_(w), h_(h), axis_(sf::PrimitiveType::LinesStrip, 3),
+		nCh_(nCh), nPoints_(nPoints), idxPoints_(0) {
 
-	}	
+		axis_[0].position.x = x_; axis_[0].position.y = y_ - h_;
+		axis_[1].position.x = x_; axis_[1].position.y = y_;
+		axis_[2].position.x = x_ + w_; axis_[2].position.y = y_;
 
-	void Run(const uint8_t* buffer) {
-		if (window_.isOpen()) {
-			time_.Run(buffer);
-			freq_.Run(fft.Compute(buffer));
-			// Process events
-			sf::Event event;
-			while (window_.pollEvent(event)) {
-				// Close window : exit
-				if (event.type == sf::Event::Closed)
-					window_.close();
+		for (int i = 0; i < nCh_; ++i) {
+			points_.emplace_back(sf::PrimitiveType::LinesStrip, nPoints_);
+			for (int j = 0; j < nPoints_; ++j) {				
+				points_[i][j].color = sf::Color(colors_[i]);
+				points_[i][j].position = sf::Vector2f(j * w_ / nPoints_ + x, y - 1);
 			}
-
-			// Clear screen
-			window_.clear();
-			time_.Draw();
-			freq_.Draw();
-			window_.display();
 		}
 	}
+
+	void Draw() {
+		window_.draw(axis_);
+		for (int i = 0; i < nCh_; ++i) {
+			window_.draw(points_[i]);
+		}
+	}
+
+	inline sf::Vector2f Transform(double x, double y) {
+		const double MaxY = 255.0;
+		return sf::Vector2f(x_ + x * w_ / nPoints_, -1 + y_ - h_ * y / MaxY);
+	}
+
+	void FillPoints(const std::vector<std::vector<double>>& organizedData, int sizePerChannel) {
+		for (int i = 0; i < sizePerChannel; ++i) {
+			if (idxPoints_ >= nPoints_) idxPoints_ = 0;
+			for (int chi = 0; chi < nCh_; ++chi) {
+				points_[chi][idxPoints_].position = Transform(idxPoints_, organizedData[chi][i]);
+			}
+			idxPoints_++;
+		}
+	}
+};
+
+class Time {
+	Display display_;
+
+	int nCh_;
+	int nData_;
+	int idxData_;
+	std::vector<std::vector<double>> data_;
+
+public:
+	Time(sf::RenderWindow& window, int x, int y, int w, int h, int nCh, int nData, int nPoints) :
+		display_(window, x, y, w, h, nCh, nPoints), nCh_(nCh), nData_(nData), idxData_(0), data_(nCh, std::vector<double>(nData)) {
+	}
+
+	void Draw() {
+		display_.Draw();
+	}
+
+	void Run(const uint8_t* rawData, int size) {
+		for (int i = 0; i < size; ++i) {
+			if (idxData_ >= nData_) idxData_ = 0;
+			for (int chi = 0; chi < nCh_; ++chi) {
+				data_[chi][idxData_] = static_cast<double>(*(rawData++));
+			}
+			idxData_++;
+		}
+
+		display_.FillPoints(data_, nData_);
+	}
+};
+
+class Freq {
+	Display display_;
+	FFT fft_;
+
+	int nCh_;
+	int nData_;
+	int idxData_;
+	std::vector<std::vector<double>> data_;
+	std::vector<std::vector<double>> dataOut_;
+
+public:
+	Freq(sf::RenderWindow& window, int x, int y, int w, int h, int nCh, int nData, int nPoints, int usPerSample) :
+		display_(window, x, y, w, h, nCh, nPoints),
+		fft_(nCh, nData, usPerSample),
+		nCh_(nCh), nData_(nData), idxData_(0), data_(nCh, std::vector<double>(nData)), dataOut_ (nCh, std::vector<double>(nPoints)) {
+
+	}
+
+	void Draw() {
+		display_.Draw();
+	}
+
+	void Run(const uint8_t* rawData, int size) {
+		for (int i = 0; i < size; ++i) {
+			if (idxData_ >= nData_) {
+				idxData_ = 0;
+				fft_.Run(data_, dataOut_);
+				display_.FillPoints(dataOut_, dataOut_[0].size());
+			}
+			for (int chi = 0; chi < nCh_; ++chi) {
+				data_[chi][idxData_] = static_cast<double>(*(rawData++));
+			}
+			idxData_++;
+			
+		}
+	}
+
 };

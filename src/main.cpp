@@ -12,8 +12,11 @@
 #include "MCU.h"
 #include "osc.h"
 
-void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBufSize) {
-	std::string sNCh, sUsPerSample, sChBufSize;
+void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBufSize,
+	int& margin, int& w, int& h, int& time_h, int& freqPoints) {
+
+	bool fileParse = false;
+	std::string sNCh, sUsPerSample, sChBufSize, sMargin, sw, sh, sTime_h, sFreqPoints;
 
 	std::ifstream initFile("../res/init.txt");
 	if (initFile.is_open()) {
@@ -24,76 +27,93 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 		initFile >> sNCh;
 		initFile >> sUsPerSample;
 		initFile >> sChBufSize;
-		nCh = std::stoi(sNCh);
-		usPerSample = std::stoi(sUsPerSample);
-		chBufSize = std::stoi(sChBufSize);
+		initFile >> sMargin;
+		initFile >> sw;
+		initFile >> sh;		
+		initFile >> sTime_h;
+		initFile >> sFreqPoints;
 
-		std::cout << "COM Port: ";
-		std::cout << sComPort << std::endl;
-		std::cout << "Number of channels: ";
-		std::cout << sNCh << std::endl;
-		std::cout << "Us per sample: ";
-		std::cout << sUsPerSample << std::endl;
-		std::cout << "Single channel buffer size: ";
-		std::cout << sChBufSize << std::endl;
+		if (sFreqPoints.size() == 0) {
+			std::cerr << "Error parsing init file" << std::endl;
+		} else {
+			nCh = std::stoi(sNCh);
+			usPerSample = std::stoi(sUsPerSample);
+			chBufSize = std::stoi(sChBufSize);
+			margin = std::stoi(sMargin);
+			w = std::stoi(sw);
+			h = std::stoi(sh);			
+			time_h = std::stoi(sTime_h);
+			freqPoints = std::stoi(sFreqPoints);
+
+			std::cout << "COM Port: " << sComPort << std::endl;
+			std::cout << "Number of channels: " << sNCh << std::endl;
+			std::cout << "Us per sample: " << sUsPerSample << std::endl;
+			std::cout << "Single channel buffer size: " << sChBufSize << std::endl;
+			std::cout << "Margin: " << sMargin << std::endl;
+			std::cout << "Width: " << sw << std::endl;
+			std::cout << "Height: " << sh << std::endl;			
+			std::cout << "Time height: " << sTime_h << std::endl;
+			std::cout << "FFT chart points: " << sFreqPoints << std::endl;
+
+			fileParse = true;
+		}		
 	}
-	else {
-		std::cout << "COM Port: ";
-		std::cin >> sComPort;
-		std::cout << "Number of channels: ";
-		std::cin >> sNCh;
-		nCh = std::stoi(sNCh);
-		std::cout << "Us per sample: ";
-		std::cin >> sUsPerSample;
-		usPerSample = std::stoi(sUsPerSample);
-		std::cout << "Single channel buffer size: ";
-		std::cin >> sChBufSize;
-		chBufSize = std::stoi(sChBufSize);
+
+	if (!fileParse){
+		std::cout << "COM Port: "; std::cin >> sComPort;
+		std::cout << "Number of channels: "; std::cin >> sNCh; nCh = std::stoi(sNCh);
+		std::cout << "Us per sample: "; std::cin >> sUsPerSample; usPerSample = std::stoi(sUsPerSample);
+		std::cout << "Single channel buffer size: "; std::cin >> sChBufSize; chBufSize = std::stoi(sChBufSize);
+		std::cout << "Margin: "; std::cin >> sMargin; margin = std::stoi(sMargin);
+		std::cout << "Width: "; std::cin >> sw; w = std::stoi(sw);
+		std::cout << "Height: "; std::cin >> sh; h = std::stoi(sh);
+		std::cout << "Time height: "; std::cin >> sTime_h; time_h = std::stoi(sTime_h);
+		std::cout << "FFT chart points: "; std::cin >> sFreqPoints; freqPoints = std::stoi(sFreqPoints);
 	}
 }
 
 
 int main() {			
-	
+		
 	std::string sComPort;
 	int nCh, usPerSample, chBufSize;
-	InitParameters(sComPort, nCh, usPerSample, chBufSize);
+	int w, h, margin, time_h;
+	int freqPoints;
+	InitParameters(sComPort, nCh, usPerSample, chBufSize, margin, w, h, time_h, freqPoints);
+
+	int freqData = 1e6 / usPerSample;
+	int time_x = margin, time_y = h - margin, time_w = w - 2 * margin;
+	int freq_x = margin, freq_y = h - (time_h + 2 * margin), freq_w = w - 2 * margin, freq_h = h - time_h - 3 * margin;
+
+	sf::RenderWindow window(sf::VideoMode(w, h), "Oscy");
+
+	Time time(window, time_x, time_y, time_w, time_h, nCh, chBufSize /* data */, time_w /* points */);
+	Freq freq(window, freq_x, freq_y, freq_w, freq_h, nCh, freqData /* data */, freqPoints /* points */, usPerSample);
+
+	MCU mcu(sComPort, nCh, chBufSize, usPerSample);
+	FFT fft(nCh, freqData, usPerSample);
 
 	uint8_t* buffer = new uint8_t[chBufSize * nCh];
-	if (buffer == nullptr) {
-		std::cout << "Couldn't allocate memory. Request of " << chBufSize * nCh << " bytes is too big" << std::endl;
-	}
+	if (buffer == nullptr) std::cerr << "Couldn't allocate buffer memory\n" << std::endl;
 
-	FFT fft(nCh, chBufSize, usPerSample);
-	MCU *mcu;
-	try {
-		mcu = new MCU(sComPort, nCh, chBufSize, usPerSample);
-	}	
-	catch (const serial::IOException& e) {
-		std::cerr << e.what() << std::endl;
-		return -1;
-	}
-	catch (const std::bad_alloc& e) {
-		std::cerr << e.what() << std::endl;
-		return -1;
-	}
+	while (window.isOpen()) {
+		mcu.ReadChunk(buffer);
+		time.Run(buffer, chBufSize);
+		freq.Run(buffer, chBufSize);
+		sf::Event event;
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed)
+				window.close();
+		}
 
-	if (!mcu->IsSerialOpen()) {
-		return -1;
-	}
-
-	Oscilloscope osc(1020, 800, "Oscilloscope", nCh);	// w, h, name, nch, uspersample
-
-	while (true) {
-		if (mcu->ReadChunk(buffer))
-			osc.Run(buffer);
+		window.clear();
+		time.Draw();
+		freq.Draw();
+		window.display();
 	}
 
 	if (buffer != nullptr) {
 		delete[] buffer;
-	}
-	if (mcu != nullptr) {
-		delete mcu;
 	}
 
 	return 0;
