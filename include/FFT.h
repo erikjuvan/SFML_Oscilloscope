@@ -35,17 +35,20 @@ private:
 
 	std::vector<FFTStruct> fftChannels_;
 
-	void Optimize(FFTStruct& fftCh, double& maxVal, double& idx, int& size) {
-		size = chBufSize_;
-		int tmpSize = size;
-		int target = size - 50;
+	void findFreq(FFTStruct& fftCh, double& freq, int optimizeLevel) {
+		int tmpSize = chBufSize_;
+		int target = tmpSize - optimizeLevel;
 		int i = 0;
+		double maxVal = 0.0;
+		int idx = 0;
+		int size = tmpSize;
 
-		while (--tmpSize > target) {
-			fftCh.fftPlan = fftw_plan_dft_r2c_1d(tmpSize, fftCh.dataIn, reinterpret_cast<fftw_complex*>(fftCh.dataOut), FFTW_MEASURE);
+		do {
+			if (optimizeLevel > 0)
+				fftCh.fftPlan = fftw_plan_dft_r2c_1d(tmpSize, fftCh.dataIn, reinterpret_cast<fftw_complex*>(fftCh.dataOut), FFTW_MEASURE);				
 			// Run FFT
 			fftw_execute(fftCh.fftPlan);
-			// Find max element - optimized
+			// Find max element
 			std::complex<double>* newMaxVal = std::max_element(fftCh.dataOut + 1, fftCh.dataOut + tmpSize / 2,	// discard 0 index (DC offset) and search only the first half
 				[](std::complex<double> const & lhs, std::complex<double> const & rhs) { return std::abs(lhs) < std::abs(rhs); });
 
@@ -54,7 +57,9 @@ private:
 				idx = std::distance(fftCh.dataOut, newMaxVal);
 				size = tmpSize;
 			}
-		}
+		} while (--tmpSize > target);
+		
+		freq = (idx * 1e6) / (size * usPerSample_);		
 	}
 
 public:
@@ -67,7 +72,7 @@ public:
 
 	~FFT() { }
 
-	void Run(const std::vector<std::vector<double>>& dataIn, std::vector<std::vector<double>>& dataOut) {
+	void run(const std::vector<std::vector<double>>& dataIn, std::vector<std::vector<double>>& dataOut, std::vector<double>& freq) {
 
 		for (int ci = 0; ci < numOfChannels_; ++ci) {
 
@@ -86,6 +91,12 @@ public:
 			for (int i = 1; i < size; ++i) {
 				dataOut[ci][i] = std::abs(fftChannels_[ci].dataOut[i]) * 4 / chBufSize_;
 			}
+
+			// Find freq
+			auto t0 = std::chrono::high_resolution_clock::now();
+			findFreq(fftChannels_[ci], freq[ci], 30);
+			auto t1 = std::chrono::high_resolution_clock::now();
+			std::cout << std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() << std::endl;
 		}
 	}
 };

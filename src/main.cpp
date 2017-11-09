@@ -12,11 +12,11 @@
 #include "MCU.h"
 #include "osc.h"
 
-void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBufSize,
-	int& margin, int& w, int& h, int& time_h, int& freqPoints) {
+void initParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBufSize,
+	int& margin, int& w, int& h, int& freqPoints) {
 
 	bool fileParse = false;
-	std::string sNCh, sUsPerSample, sChBufSize, sMargin, sw, sh, sTime_h, sFreqPoints;
+	std::string sNCh, sUsPerSample, sChBufSize, sMargin, sw, sh, sFreqPoints;
 
 	std::ifstream initFile("../res/init.txt");
 	if (initFile.is_open()) {
@@ -30,7 +30,6 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 		initFile >> sMargin;
 		initFile >> sw;
 		initFile >> sh;		
-		initFile >> sTime_h;
 		initFile >> sFreqPoints;
 
 		if (sFreqPoints.size() == 0) {
@@ -42,7 +41,6 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 			margin = std::stoi(sMargin);
 			w = std::stoi(sw);
 			h = std::stoi(sh);			
-			time_h = std::stoi(sTime_h);
 			freqPoints = std::stoi(sFreqPoints);
 
 			std::cout << "COM Port: " << sComPort << std::endl;
@@ -52,7 +50,6 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 			std::cout << "Margin: " << sMargin << std::endl;
 			std::cout << "Width: " << sw << std::endl;
 			std::cout << "Height: " << sh << std::endl;			
-			std::cout << "Time height: " << sTime_h << std::endl;
 			std::cout << "FFT chart points: " << sFreqPoints << std::endl;
 
 			fileParse = true;
@@ -67,7 +64,6 @@ void InitParameters(std::string& sComPort, int& nCh, int& usPerSample, int& chBu
 		std::cout << "Margin: "; std::cin >> sMargin; margin = std::stoi(sMargin);
 		std::cout << "Width: "; std::cin >> sw; w = std::stoi(sw);
 		std::cout << "Height: "; std::cin >> sh; h = std::stoi(sh);
-		std::cout << "Time height: "; std::cin >> sTime_h; time_h = std::stoi(sTime_h);
 		std::cout << "FFT chart points: "; std::cin >> sFreqPoints; freqPoints = std::stoi(sFreqPoints);
 	}
 }
@@ -77,12 +73,12 @@ int main() {
 		
 	std::string sComPort;
 	int nCh, usPerSample, chBufSize;
-	int w, h, margin, time_h;
+	int w, h, margin;
 	int freqPoints;
-	InitParameters(sComPort, nCh, usPerSample, chBufSize, margin, w, h, time_h, freqPoints);
+	initParameters(sComPort, nCh, usPerSample, chBufSize, margin, w, h, freqPoints);
 
 	int freqData = 1e6 / usPerSample;
-	int time_x = margin, time_y = h - margin, time_w = w - 2 * margin;
+	int time_x = margin, time_y = h - margin, time_w = w - 2 * margin, time_h = (h - 3 * margin) * 2 / 3;	
 	int freq_x = margin, freq_y = h - (time_h + 2 * margin), freq_w = w - 2 * margin, freq_h = h - time_h - 3 * margin;
 
 	sf::RenderWindow window(sf::VideoMode(w, h), "Oscy");
@@ -97,9 +93,9 @@ int main() {
 	if (buffer == nullptr) std::cerr << "Couldn't allocate buffer memory\n" << std::endl;
 
 	while (window.isOpen()) {
-		mcu.ReadChunk(buffer);
-		time.Run(buffer, chBufSize);
-		freq.Run(buffer, chBufSize);
+		mcu.readChunk(buffer);		
+		time.run(buffer, chBufSize);		
+		freq.run(buffer, chBufSize);				
 		sf::Event event;
 		while (window.pollEvent(event)) {
 			if (event.type == sf::Event::Closed)
@@ -107,8 +103,8 @@ int main() {
 		}
 
 		window.clear();
-		time.Draw();
-		freq.Draw();
+		time.draw();
+		freq.draw();
 		window.display();
 	}
 

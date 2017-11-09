@@ -27,13 +27,13 @@ public:
 		}
 	}
 
-	size_t ReadChunk(uint8_t* data) {
+	size_t readChunk(uint8_t* data) {
 		return serial_.read(data, numOfChannels_ * chBufSize_);
 	}
 
-	int GetNumOfChannels() { return numOfChannels_; }
-	int GetUsPerSample() { return usPerSample_; }
-	size_t GetRxBufferLen() { return serial_.available(); }
-	bool IsSerialOpen() { return serial_.isOpen(); }
+	int getNumOfChannels() { return numOfChannels_; }
+	int getUsPerSample() { return usPerSample_; }
+	size_t getRxBufferLen() { return serial_.available(); }
+	bool isSerialOpen() { return serial_.isOpen(); }
 
 };
