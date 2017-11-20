@@ -90,7 +90,6 @@ int main() {
 	FFT fft(nCh, freqData, usPerSample);
 
 	uint8_t* buffer = new uint8_t[chBufSize * nCh];
-	if (buffer == nullptr) std::cerr << "Couldn't allocate buffer memory\n" << std::endl;
 
 	while (window.isOpen()) {
 		mcu.readChunk(buffer);		
