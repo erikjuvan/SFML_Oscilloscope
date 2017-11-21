@@ -51,3 +51,55 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 	${FFTW3_LIBRARIES}
 	${SFML_LIBRARIES} ${SFML_DEPENDENCIES})
 endif ()
+
+###############
+# DLL COPYING #
+###############
+
+# SFML DEBUG
+get_filename_component(SFML_GRAPHICS_DEBUG_DLL ${SFML_GRAPHICS_LIBRARY_DEBUG} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_GRAPHICS_DEBUG_DLL ${SFML_GRAPHICS_DEBUG_DLL})
+get_filename_component(SFML_WINDOW_DEBUG_DLL ${SFML_WINDOW_LIBRARY_DEBUG} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_WINDOW_DEBUG_DLL ${SFML_WINDOW_DEBUG_DLL})
+get_filename_component(SFML_SYSTEM_DEBUG_DLL ${SFML_SYSTEM_LIBRARY_DEBUG} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_SYSTEM_DEBUG_DLL ${SFML_SYSTEM_DEBUG_DLL})
+set(SFML_DEBUG_DLLS ${SFML_GRAPHICS_DEBUG_DLL} ${SFML_WINDOW_DEBUG_DLL} ${SFML_SYSTEM_DEBUG_DLL})
+
+foreach(file_to_be_copied ${SFML_DEBUG_DLLS})
+add_custom_command(
+	TARGET ${PROJECT_NAME}
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND}
+	ARGS -E copy_if_different ${SFML_ROOT}\\lib\\${file_to_be_copied}
+	${PROJECT_BINARY_DIR}/Debug/${file_to_be_copied})
+endforeach(file_to_be_copied) 
+
+# SFML RELEASE
+get_filename_component(SFML_GRAPHICS_RELEASE_DLL ${SFML_GRAPHICS_LIBRARY_RELEASE} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_GRAPHICS_RELEASE_DLL ${SFML_GRAPHICS_RELEASE_DLL})
+get_filename_component(SFML_WINDOW_RELEASE_DLL ${SFML_WINDOW_LIBRARY_RELEASE} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_WINDOW_RELEASE_DLL ${SFML_WINDOW_RELEASE_DLL})
+get_filename_component(SFML_SYSTEM_RELEASE_DLL ${SFML_SYSTEM_LIBRARY_RELEASE} NAME)
+string(REGEX REPLACE "\\.lib" "-2.dll" SFML_SYSTEM_RELEASE_DLL ${SFML_SYSTEM_RELEASE_DLL})
+set(SFML_RELEASE_DLLS ${SFML_GRAPHICS_RELEASE_DLL} ${SFML_WINDOW_RELEASE_DLL} ${SFML_SYSTEM_RELEASE_DLL})
+
+foreach(file_to_be_copied ${SFML_RELEASE_DLLS})
+add_custom_command(
+	TARGET ${PROJECT_NAME}
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND}
+	ARGS -E copy_if_different ${SFML_ROOT}\\lib\\${file_to_be_copied}
+	${PROJECT_BINARY_DIR}/Release/${file_to_be_copied})
+endforeach(file_to_be_copied) 
+
+# FFTW
+set(FFTW3_DLLS libfftw3-3.dll)
+
+foreach(file_to_be_copied ${FFTW3_DLLS})
+add_custom_command(
+	TARGET ${PROJECT_NAME}
+	POST_BUILD
+	COMMAND ${CMAKE_COMMAND}
+	ARGS -E copy_if_different ${FFTW3_ROOT_DIR}\\${file_to_be_copied}
+	${PROJECT_BINARY_DIR}/$<CONFIG>/${file_to_be_copied})
+endforeach(file_to_be_copied) 

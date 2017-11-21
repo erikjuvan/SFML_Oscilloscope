@@ -7,13 +7,7 @@ private:
 	std::string sNCh, sPacketsPerChannel, sSampleFreq, sChBufSize;
 	std::string sMargin, sW, sH, sFreqPoints;
 
-	void clearScreen() {
-#if defined(_WIN32)
-		system("cls");
-#elif defined(__linux__)
-		system("clear");
-#endif
-	}
+	void clearScreen();
 
 public:
 	std::string comPort;
